@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Interface</title>
+    <link rel="stylesheet" href="/styles/chat-style.css">
+</head>
+
+<body>
+
+    <div class="app">
+        <div class="screen join-screen active">
+            <div class="form">
+                <h2>Join Chatroom</h2>
+                <div class="form-input">
+                    <input type="hidden" id="username" value="<%= username %>">
+                    <button id="join-user">Join</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen chat-screen">
+            <div class="header">
+                <div class="logo">Chatroom</div>
+                <button id="exit-chat">Exit</button>
+            </div>
+            <div class="messages">
+
+            </div>
+            <div class="typebox">
+                <input type="text" id="message-input" placeholder="type a message...">
+                <button id="send-message">Send</button>
+            </div>
+        </div>
+
+        <div class="connected-users">
+            <!-- <h3>Connected Users (4)</h3>
+            <ul id="users-list">
+                <li>Soulaimane</li>
+                <li>Salma</li>
+                <li>Mohammed</li>
+                <li>Ibrahim</li>
+            </ul> -->
+        </div>
+
+    </div>
+    <a href="/logout" class="logout-btn">logout</a>
+
+    <!-- Javascript for socket io integration -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const app = document.querySelector('.app');
+        const socket = io();
+
+        let uname;
+
+        app.querySelector('#join-user').addEventListener('click', () => {
+            const username = app.querySelector('#username').value;
+            if (username.trim().length == 0) {
+                return
+            }
+            socket.emit('joinUser', username);
+
+            uname = username;
+            socket.on('connectedUsers', (users) => {
+                let connectedUsers = document.querySelector('.connected-users');
+                connectedUsers.innerHTML = `
+                    <h3>Connected Users (${users.length})</h3>
+                    <ul id='users-list'></ul>
+                `;
+                const ul = document.querySelector('#users-list');
+                users.forEach(user => {
+                    const li = document.createElement('li');
+                    li.innerText = user;
+                    ul.appendChild(li);
+                });
+            });
+            app.querySelector('.join-screen').classList.remove('active');
+            app.querySelector('.chat-screen').classList.add('active');
+        });
+
+        app.querySelector('#send-message').addEventListener('click', () => {
+            let message = app.querySelector('#message-input').value;
+            if (message.length == 0) return;
+
+            renderMessage('mine', {
+                username: uname,
+                text: message
+            })
+            socket.emit('chat-message', {
+                username: uname,
+                text: message
+            });
+            app.querySelector('#message-input').value = '';
+        });
+
+        app.querySelector('#exit-chat').addEventListener('click', () => {
+            socket.emit('exitUser', uname);
+            app.querySelector('.join-screen').classList.add('active');
+            app.querySelector('.chat-screen').classList.remove('active');
+
+            window.location.href = window.location.href;
+        });
+
+        socket.on('update', (updateAlert) => {
+            renderMessage('update', updateAlert);
+        });
+
+        socket.on('chat-message', (message) => {
+            renderMessage('other', message);
+        });
+
+
+        function renderMessage(type, message) {
+            let messageContainer = document.querySelector('.messages');
+
+            if (type === 'mine') {
+                const elem = document.createElement('div');
+                elem.setAttribute('class', 'message my-message');
+                elem.innerHTML = `
+                        <div>
+                            <div class="name">You</div>
+                            <div class="text">${message.text}</div>
+                        </div>
+                    `;
+                messageContainer.appendChild(elem);
+            } else if (type === 'other') {
+                let elem = document.createElement('div');
+                elem.setAttribute('class', 'message other-message');
+                elem.innerHTML = `
+                        <div>
+                            <div class="name">${message.username}</div>
+                            <div class="text">${message.text}</div>
+                        </div>
+                    `;
+                messageContainer.appendChild(elem);
+            } else if (type === 'update') {
+                let elem = document.createElement('div');
+                elem.setAttribute('class', 'update');
+                elem.innerText = message;
+                messageContainer.appendChild(elem);
+            }
+            messageContainer.scrollTop = messageContainer.scrollHeight - messageContainer.clientHeight;
+
+        }
+    </script>
+</body>
+
+</html>
