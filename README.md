@@ -1,5 +1,3 @@
-# Team-X-MERN-REPO
+# Chat app
 
-JIT-170723-1-MERN
-
-Chat application with Socket.io
+## Chat application with Express and Socket.io
